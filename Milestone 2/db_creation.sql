@@ -1,4 +1,4 @@
-create database JobPortal
+﻿create database JobPortal
 use JobPortal
 go
 create table Users(
