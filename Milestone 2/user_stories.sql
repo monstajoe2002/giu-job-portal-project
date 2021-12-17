@@ -173,8 +173,7 @@ IF EXISTS(SELECT
         @emp_id =emp_id)
 SET
 profile_status=@status,
-reason=@reason 
-
+reason=@reason
 
 go
 CREATE PROC PostJob
@@ -224,26 +223,42 @@ go
 CREATE PROC AddFacultyRepToII
 @job_id int, @admin_id int, @facultyRep_id int
 AS
-IF EXISTS(SELECT facRep_id,job_id
-FROM Industrial_Internship, Faculty_Representative,Job
-WHERE facRep_id=@facultyRep_id
-AND job_id=@job_id)
-INSERT INTO Industrial_Internship
-VALUES
+IF EXISTS (SELECT * 
+FROM Admin A 
+WHERE @admin_id = A.id)
+BEGIN
+SELECT faculty_name 
+FROM Allowed_faculties 
+INNER JOIN Job J
+ON J.id = A.id
+INNER JOIN Industrial_Internship I
+ON I.id = J.id
+INNER JOIN Faculty_Representative F
+ON F.faculty= A.faculty_name 
+END
 
 go
 CREATE PROC AdminReviewJob
 @admin_id int, @job_id int, @visibility bit, @reason varchar(100)
 AS
-IF EXISTS (SELECT job_id
-	FROM Job
-	WHERE @job_id=job_id
-	AND admin_id=@admin_id)
-SET @visibility='1'
+IF NOT EXISTS (SELECT ID 
+FROM Industrial_Internship 
+WHERE Industrial_Internship.ID = @job_id)
+BEGIN
+UPDATE JOB
+SET
+Job.visibilty = @visibility,
+Job.reason = @reason
+WHERE Job.admin_id = @admin_id
+END
+ELSE
+begin
+exec courseInformation
+end
 
 go
 CREATE PROC EmpViewJobs
-@emp_id int
+@emp_id intX
 AS
 SELECT emp_id
 FROM Employer e,Job j
@@ -360,3 +375,56 @@ SELECT @nOfReports =SUM(s_id) FROM Student
 ELSE
 SET @numeric_state=-1
 SET @evaluation='not evaluated yet' 
+
+go
+CREATE PROC ViewAdvisors
+AS
+SELECT * FROM Academic_Advisor
+
+go
+CREATE PROC CocViewStudents
+@ii_id int
+AS
+SELECT student_ID
+FROM Apply
+WHERE Apply.job_ID = @ii_id
+
+go
+CREATE PROC CocUpdateEligibility
+@coc_id int, @s_id int, @ii_id int, @eligibility bit
+AS
+SELECT eligibility FROM Eligible
+WHERE Eligible.student_id = @s_id
+AND Eligible.II_id = @ii_id
+AND Eligible.coc_id = @coc_id
+UPDATE Eligible.eligibility = @eligibility
+WHERE WHERE Eligible.student_id = @s_id
+AND Eligible.II_id = @ii_id
+AND Eligible.coc_id = @coc_id
+
+go
+CREATE PROC AAToII
+@aa_id int, @ii_id int
+AS
+IF(Industrial_Internship.status = '1')
+BEGIN
+UPDATE Industrial_Internship.aa_id = @aa_id
+WHERE Industrial_Internship.ID = @ii_id
+END
+
+go
+CREATE PROC EvalProgressReport
+@sid int, @date datetime, @numeric_state int, @evaluation varchar(100)
+AS
+UPDATE Progress_report.evaluation = @evaluation
+WHERE Progress_report.student_id = @sid
+AND Progress_report.date = @date
+AND Progress_report.numeric_state = @numeeric_state
+
+go
+CREATE PROC ViewProgressReports
+@advisor_id int
+AS
+SELECT * FROM Proress_report
+WHERE Proress_report.advisor_id = @advisor_id
+ORDER BY Proress_report.date DESC
