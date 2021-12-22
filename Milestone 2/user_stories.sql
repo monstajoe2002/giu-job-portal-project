@@ -1,4 +1,4 @@
-﻿use JobPortal
+use JobPortal
 go
 CREATE PROC ShowEmployers
 AS
@@ -223,27 +223,31 @@ go
 CREATE PROC AddFacultyRepToII
 @job_id int, @admin_id int, @facultyRep_id int
 AS
-IF EXISTS (SELECT * 
-FROM Admin A 
-WHERE @admin_id = A.id)
+IF EXISTS (SELECT I.job_id
+FROM Industrial_Internship I
+WHERE I.job_id = @job_id)
 BEGIN
-SELECT faculty_name 
-FROM Allowed_faculties 
-INNER JOIN Job J
-ON J.id = A.id
-INNER JOIN Industrial_Internship I
-ON I.id = J.id
-INNER JOIN Faculty_Representative F
-ON F.faculty= A.faculty_name 
+DECLARE @f VARCHAR(20)
+SELECT @f = F.faculty
+FROM Faculty_Representative F
+WHERE F.facRep_id = @facultyRep_id
+IF EXISTS (SELECT A.allowed_faculty
+FROM Allowed_faculties A
+WHERE @f = A.allowed_faculty)
+	BEGIN 
+	UPDATE Industrial_Internship
+	SET facRep_id = @facultyRep_id
+	WHERE Industrial_Internship.job_id = @job_id
+	END
 END
 
 go
 CREATE PROC AdminReviewJob
 @admin_id int, @job_id int, @visibility bit, @reason varchar(100)
 AS
-IF NOT EXISTS (SELECT ID 
+IF NOT EXISTS (SELECT Industrial_Internship.job_id 
 FROM Industrial_Internship 
-WHERE Industrial_Internship.ID = @job_id)
+WHERE Industrial_Internship.job_id = @job_id)
 BEGIN
 UPDATE JOB
 SET
@@ -252,9 +256,9 @@ Job.reason = @reason
 WHERE Job.admin_id = @admin_id
 END
 ELSE
-begin
-exec courseInformation
-end
+BEGIN
+EXEC courseInformation
+END
 
 go
 CREATE PROC EmpViewJobs
@@ -385,31 +389,31 @@ go
 CREATE PROC CocViewStudents
 @ii_id int
 AS
-SELECT student_ID
-FROM Apply
+SELECT Applies.s_ID
+FROM Applies
 WHERE Apply.job_ID = @ii_id
 
 go
 CREATE PROC CocUpdateEligibility
 @coc_id int, @s_id int, @ii_id int, @eligibility bit
 AS
-SELECT eligibility FROM Eligible
-WHERE Eligible.student_id = @s_id
-AND Eligible.II_id = @ii_id
+SELECT Eligible.eligibility FROM Eligible
+WHERE Eligible.s_id = @s_id
+AND Eligible.ii_id = @ii_id
 AND Eligible.coc_id = @coc_id
 UPDATE Eligible.eligibility = @eligibility
-WHERE WHERE Eligible.student_id = @s_id
-AND Eligible.II_id = @ii_id
+WHERE Eligible.s_id = @s_id
+AND Eligible.ii_id = @ii_id
 AND Eligible.coc_id = @coc_id
 
 go
 CREATE PROC AAToII
 @aa_id int, @ii_id int
 AS
-IF(Industrial_Internship.status = '1')
+IF(Industrial_Internship.ii_status = '1')
 BEGIN
 UPDATE Industrial_Internship.aa_id = @aa_id
-WHERE Industrial_Internship.ID = @ii_id
+WHERE Industrial_Internship.job_id = @ii_id
 END
 
 go
@@ -417,8 +421,8 @@ CREATE PROC EvalProgressReport
 @sid int, @date datetime, @numeric_state int, @evaluation varchar(100)
 AS
 UPDATE Progress_report.evaluation = @evaluation
-WHERE Progress_report.student_id = @sid
-AND Progress_report.date = @date
+WHERE Progress_report.s_id = @sid
+AND Progress_report.dates = @date
 AND Progress_report.numeric_state = @numeeric_state
 
 go
@@ -427,4 +431,4 @@ CREATE PROC ViewProgressReports
 AS
 SELECT * FROM Proress_report
 WHERE Proress_report.advisor_id = @advisor_id
-ORDER BY Proress_report.date DESC
+ORDER BY Proress_report.dates DESC
